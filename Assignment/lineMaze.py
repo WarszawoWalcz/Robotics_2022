@@ -106,6 +106,9 @@ if clientID != -1:
         print("gray scale: ")
         print (gray)
 
+        black = black_image(gray)
+        print("black: ")
+        print(black)
         Goal = True
 
         # for i in get_image_sensor():
