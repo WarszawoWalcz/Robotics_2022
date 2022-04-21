@@ -1,12 +1,10 @@
 import sim
 import numpy as np
-import time
 import colorsys
 import matplotlib.pyplot as plt
 
 sim.simxFinish(-1)
 clientID = sim.simxStart('127.0.0.1', 19999, True, True, 5000, 5)
-this_time = time.time()
 
 
 # FUNCTIONS TO INTERFACE WITH THE ROBOT
@@ -21,7 +19,7 @@ def get_image_sensor():
                                                         operationMode=sim.simx_opmode_blocking)
     if return_code == 0:
         image = sim.simxUnpackFloats(return_value)
-        res = int(np.sqrt(len(image) / 3))
+        res = int(np.sqrt(len(image)/3))
         return image_correction(image, res)
     else:
         return return_code
@@ -45,29 +43,80 @@ def image_correction(image, res):
     image = np.flip(m=image, axis=0)
     return image
 
+def gray_scale(rgb):
+    r = rgb[:,:,0] 
+    g = rgb[:,:,1]
+    b = rgb[:,:,2]
+    return 0.2989 * r + 0.5870 * g + 0.1140 * b
+
+def black_image(image):
+    black = (image < 30).astype(int)
+    return black
 
 def show_image(image):
     plt.imshow(image)
     plt.show()
 
+error = []
+
+def E(t):
+    Kp = 1
+    Ki = 1
+    Kd = 1
+    PID_error = Kp * error(t) + Ki * np.trapz(error) + Kd *  np.gradient(error[-2:])[-1]
+    return PID_error
+
+def sense():
+    pass
+
+def decide(state):
+    state = None
+    if atDisk(state):
+        Goal = True
+        return 
+    else:
+        pass
+
+def act(decision):
+    if decision ==1:
+        #goal
+        return
+    elif decision ==2:
+        #curve
+    
+        #take turn
+        pass
+
+def atDisk(state):
+    pass
 
 # MAIN CONTROL LOOP
+Goal = False
 if clientID != -1:
     print('Connected')
-    while sim.simxGetConnectionId(clientID) != -1:
-        # your code goes here
-        set_speed(1, -1)
-
+    while (not Goal):
+        # state = sense()
+        # action = decide(state)
+        # act(action)
         r_values = []
 
-        for i in get_image_sensor():
-            for j in i:
-                r_values.append(j[0])
-        print(np.mean(r_values))
+        image = get_image_sensor()
+        gray = gray_scale(image)
+        
+        print("gray scale: ")
+        print (gray)
+
+        Goal = True
+
+        # for i in get_image_sensor():
+        #     for j in i:
+               
+        #         r_values.append(j[0])
+        # print(np.mean(r_values))
+
+    # End connection
     sim.simxGetPingTime(clientID)
     sim.simxFinish(clientID)
 else:
     print('Failed connecting to remote API server')
-    sys.exit('Could not connect')
-
 print('Program ended')
