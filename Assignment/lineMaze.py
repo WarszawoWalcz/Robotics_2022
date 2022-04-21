@@ -2,6 +2,7 @@ import sim
 import numpy as np
 import colorsys
 import matplotlib.pyplot as plt
+import random
 
 sim.simxFinish(-1)
 clientID = sim.simxStart('127.0.0.1', 19999, True, True, 5000, 5)
@@ -50,8 +51,19 @@ def gray_scale(rgb):
     return 0.2989 * r + 0.5870 * g + 0.1140 * b
 
 def black_image(image):
-    black = (image < 30).astype(int)
+    gray = gray_scale(image)
+    black = (gray < 30).astype(int)
     return black
+
+def red_image(image):
+    red = image[:,:,0]
+    red = (red  > 235).astype(int)
+    return red
+
+def blue_image(image):
+    blue = image[:,:,2]
+    blue = (blue > 235).astype(int)
+    return blue
 
 def show_image(image):
     plt.imshow(image)
@@ -66,17 +78,47 @@ def E(t):
     PID_error = Kp * error(t) + Ki * np.trapz(error) + Kd *  np.gradient(error[-2:])[-1]
     return PID_error
 
-def sense():
-    pass
+def sense(image):
+    red = red_image(image)
+    blue = blue_image(image)
+    black = black_image(image)
+    
+    sense_red = np.any(red.flatten())
+    sense_blue = np.any(blue.flatten())
+    sense_black = np.any(black.flatten())
+    
+    return((sense_red,sense_blue,sense_black),(red,blue,black))
 
 def decide(state):
-    state = None
-    if atDisk(state):
-        Goal = True
-        return 
-    else:
+    ((sense_red,sense_blue,sense_black),(red,blue,black)) = state
+    # print(sense_red,sense_blue,sense_black)
+    if sense_blue:
+        print("blue")
+        print(blue)
+        if atDisk(blue):
+            Goal = True
+            return 
+        else:
+            # continue to blue
+            pass
+    elif sense_red:
+        print("red")
+        print(red)
+        if sense_black:
+            print("black")
+            print(black)
+            # go to line
+            pass
+        else:
+            # search black
+            pass
+    elif sense_black:
+        print("black")
+        print(black)
+        #curves? 90 degree turns?
+        #continue to follow the line
         pass
-
+        
 def act(decision):
     if decision ==1:
         #goal
@@ -86,31 +128,35 @@ def act(decision):
     
         #take turn
         pass
-
-def atDisk(state):
+def follow_line(image):
     pass
 
+def atDisk(state):
+    if np.all(state,1):
+        return True
+    else:
+        return False
+
+def drive_random():
+    right = random.randint(0,3)
+    left = random.randint(0,3)
+    set_speed(right,left)
+    
 # MAIN CONTROL LOOP
 Goal = False
 if clientID != -1:
     print('Connected')
-    while (not Goal):
-        # state = sense()
-        # action = decide(state)
-        # act(action)
-        r_values = []
-
+    i = 0
+    while (i < 10):
+        i +=1
         image = get_image_sensor()
-        gray = gray_scale(image)
+        state = sense(image)
+        action = decide(state)
+        # act(action)
         
-        print("gray scale: ")
-        print (gray)
-
-        black = black_image(gray)
-        print("black: ")
-        print(black)
-        Goal = True
-
+        drive_random()
+        
+        # r_values = []
         # for i in get_image_sensor():
         #     for j in i:
                
