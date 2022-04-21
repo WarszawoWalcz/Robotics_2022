@@ -1,3 +1,16 @@
 about PID theory: https://www.youtube.com/watch?v=UR0hOmjaHp0 ( 7min)
 
 about maze solver: https://www.youtube.com/watch?v=DkOXpZtEZwg ( timestamp: 1.00 min)
+
+for basic understandment of CopelliaSim: https://youtu.be/PwGY8PxQOXY
+
+pid wall following project from git: https://github.com/robertandreibarbulescu/PID_wall_following
+
+Line-following robot in CoppeliaSim: 
+
+https://www.youtube.com/watch?v=xI-ZEewIzzI&ab_channel=NikolaiK.
+https://www.youtube.com/watch?v=SQont-mTnfM&ab_channel=NikolaiK.
+
+Python + CoppeliaSim: https://www.youtube.com/watch?v=SQont-mTnfM&ab_channel=NikolaiK.
+
+REALLY USEFUL for the first problem: https://www.york.ac.uk/media/electronic-engineering/welcome/Simulation%20Challenge%20-%20Python%20Scripting.pdf
