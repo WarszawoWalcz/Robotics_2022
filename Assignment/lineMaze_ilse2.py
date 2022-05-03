@@ -79,7 +79,7 @@ errors_right = []
 
 
 def E(error):
-    Kp = 0.04
+    Kp = 0.03
     Ki = 1e-10
     Kd = 0.015
     if len(error) <2:
@@ -109,7 +109,10 @@ def detect_line_direction(black):
     n_pixels_back_left = np.count_nonzero(black[:4,-3:])
     n_pixels_front_right = np.count_nonzero(black[-4:,:3])
     n_pixels_front_left = np.count_nonzero(black[-4:,-3:])
+    n_pixels_front = np.count_nonzero(black[-14:,:])
     
+    if n_pixels_front == 0:
+        return "return", (n_pixels_back_left,n_pixels_back_right)
     if (n_pixels_front_left > 0):
         if not (n_pixels_front_right>0):
             return "turn left", (n_pixels_front_left,n_pixels_front_right)
@@ -155,7 +158,7 @@ def decide(state):
    
     else:
         print("blank")
-        action = "maintain"
+        action = "circle back"
         error = (0,0)
 
     return action,error
@@ -175,17 +178,22 @@ def act(action,error):
         turn("r", PID_error)
     elif action == "straight":
        straight() 
-    elif action == "maintain":
-        return
+    elif action == "circle back":
+        backward_circle()
+    elif action == "return":
+        rotate()
 
 def straight():
     print("go straight")
     set_speed(0.3,0.3)
 
+def rotate():
+    set_speed(-5,5)
+    
 def turn(direction, magnitude):
     if direction == "l":
         print("slowing left by ", magnitude)
-        set_speed(0.4 - magnitude,0.5)
+        set_speed(0.4 - magnitude,0.6)
     else:
         print("slowing right by", magnitude)
         set_speed(0.6, 0.4- magnitude)
@@ -196,6 +204,9 @@ def atDisk(state):
     else:
         return False
 
+def backward_circle():
+    set_speed(-0.8,1)
+    
 def drive_random():
     right = random.random()
     left = random.random()
