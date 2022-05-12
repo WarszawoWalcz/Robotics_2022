@@ -137,7 +137,6 @@ def decide(state):
         print("blue")
         print(blue)
         if atDisk(blue):
-            Goal = True
             action = "stay"
             error = (0,0)
             return action,error
@@ -188,7 +187,7 @@ def straight():
     set_speed(0.3,0.3)
 
 def rotate():
-    set_speed(-5,5)
+    set_speed(5,-5)
     
 def turn(direction, magnitude):
     if direction == "l":
@@ -205,6 +204,7 @@ def atDisk(state):
         return False
 
 def backward_circle():
+    print("backward circle")
     set_speed(-0.8,1)
     
 def drive_random():
@@ -224,7 +224,8 @@ if clientID != -1:
         state = sense(image)
         action,error = decide(state)
         act(action,error)
-
+        if action == "stay":
+            Goal = True
     # End connection
     sim.simxGetPingTime(clientID)
     sim.simxFinish(clientID)

@@ -1,8 +1,13 @@
 import colorsys
+
+from click import pass_obj
 import sim
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
+import random
+import struct
+
 
 sim.simxFinish(-1)
 clientID = sim.simxStart('127.0.0.1', 19999, True, True, 5000, 5)
@@ -20,9 +25,9 @@ def set_speed(speed_l, speed_r):
 
 
 def get_battery():
-    return sim.simxGetStringSignal(clientID=clientID, signalName="battery",
+    _, battery = sim.simxGetStringSignal(clientID=clientID, signalName="battery",
                                    operationMode=sim.simx_opmode_blocking)
-
+    return (bytes(battery)).decode()
 
 def get_bumper_sensor():
     # Bumper reading as 3-dimensional force vector
@@ -91,16 +96,97 @@ def show_image(image):
     plt.imshow(image)
     plt.show()
 
-# END OF FUNCTIONS
+def drive_random():
+    l = random.random() * 10
+    r = random.random() * 10
+    set_speed(l,r)
 
+def green_image(image):
+    green = image[:, :, 1]
+    green = (green > 235).astype(int)
+    return green
+   
+def red_image(image,object):
+    if object == "box":
+        red = image[:, :, 0]
+        green = image[:,:,1]
+        print("red: ", np.unique(red.flatten()))
+        print("green: ", np.unique(green.flatten()))
+        red = ((red > 190)&(green > 223)).astype(int)
+        print("box")
+    elif object == "bin":
+        green = image[:,:,1]
+        print("red: " , np.unique(red.flatten()))
+        print("green: ", np.unique(green.flatten()))
+        red = (red > 220).astype(int)
+        print("bin")
+    return red
+
+def yellow_image(image):
+    return ((green_image(image) + red_image(image,"bin"))/2).astype(int)
+    
+def blue_image(image):
+    blue = image[:, :, 2]
+    blue = (blue > 235).astype(int)
+    return blue
+
+
+# END OF FUNCTIONS
+def sense(request):
+    if request == "bumper_pressure":
+        return get_bumper_sensor()
+    elif request == "object distance":
+        return get_sonar_sensor()
+    elif request == "top_view":
+        return get_image_top_cam()
+    elif request == "close_view":
+        return get_image_small_cam()
+    elif request == "battery_lev":
+        return get_battery()
+    
+def object_against_bumper(view):
+    if np.all(red_image(view,"box")) or np.all(green_image(view)):
+        return True
+    return False
+
+def find_object_vision(image):
+    red = red_image(image,"box")
+    if np.any(red.flatten()):
+        return True
+    green = green_image(image)
+    if np.any(green.flatten()):
+        return True
+    return False
+
+       
+def decide():
+    battery = float(sense("battery_lev"))
+    if battery < 0.1:
+        print("charge")
+        return "charge"
+    else: 
+        print("battery OK")
+    found_object = object_against_bumper(sense("close_view"))
+    if found_object:
+        print("feel object against bumper")
+        return "feel object against bumper"
+    object_in_vision = find_object_vision(get_image_small_cam())
+    # print(get_image_small_cam()[:,:,0])
+    if object_in_vision:
+        print("object in vision")
+    
 
 # MAIN CONTROL LOOP
 if clientID != -1:
     print('Connected')
     while True:
         # your code goes here
-        set_speed(0, 0)
-
+        drive_random()
+        decide()
+        # print()
+        # decide()
+        # show_image(get_image_small_cam())
+        # show_image(get_image_top_cam())
     # End connection
     sim.simxGetPingTime(clientID)
     sim.simxFinish(clientID)
