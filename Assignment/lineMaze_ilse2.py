@@ -145,7 +145,7 @@ def decide(state):
     elif sense_black:
         print("black")
         action, error = detect_line_direction(black)
-        if action is not "straight":
+        if action != "straight":
             print(black)
 
     elif sense_red:

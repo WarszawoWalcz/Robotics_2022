@@ -186,7 +186,7 @@ Goal = False
 if clientID != -1:
     print('Connected')
     i = 0
-    while i < 1000:
+    while i < 20:
         i += 1
         image = get_image_sensor()
         state = sense(image)
