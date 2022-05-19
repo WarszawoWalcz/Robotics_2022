@@ -102,25 +102,28 @@ def drive_random():
     set_speed(l,r)
 
 def green_image(image):
-    green = image[:, :, 1]
-    green = (green > 235).astype(int)
-    return green
+    green = image[:,:,1]
+    return np.any((green > 235))
+
+def blue_image(image):
+    blue = image[:,:,2]
+    return np.any((blue > 235))
    
 def red_image(image,object):
-    if object == "box":
+    if object == "bo    x":
+        print("looking for red box:")
+        red = image[:, :, 0]
+        green = image[:,:,1] 
+        red_matches = (red < 115) & (red > 95)
+        green_matches = (green > 45) & (green < 55)  
+        return(np.any((red_matches & green_matches)))
+    elif object == "bin":
+        print("looking for red bin:")
         red = image[:, :, 0]
         green = image[:,:,1]
-        print("red: ", np.unique(red.flatten()))
-        print("green: ", np.unique(green.flatten()))
-        red = ((red > 190)&(green > 223)).astype(int)
-        print("box")
-    elif object == "bin":
-        green = image[:,:,1]
-        print("red: " , np.unique(red.flatten()))
-        print("green: ", np.unique(green.flatten()))
-        red = (red > 220).astype(int)
-        print("bin")
-    return red
+        red_matches = (red > 120) 
+        green_matches = (green < 10)  
+        return(np.any((red_matches & green_matches)))
 
 def yellow_image(image):
     return ((green_image(image) + red_image(image,"bin"))/2).astype(int)
@@ -150,15 +153,24 @@ def object_against_bumper(view):
     return False
 
 def find_object_vision(image):
-    red = red_image(image,"box")
-    if np.any(red.flatten()):
-        return True
-    green = green_image(image)
-    if np.any(green.flatten()):
-        return True
-    return False
+    red_box = red_image(image,"box")
+    if red_box:
+        print("red box detected")
+        return (True,"red")
+    green_box = green_image(image)
+    if  green_box:
+        print("green box detected")
+        return (True,"green")
+    return (False,"")
 
-       
+def find_bin_vision(image,colour):
+    if colour == "blue":
+        blue_bin = np.any(blue_image(image))
+        return blue_bin
+    elif colour == "red":
+        red_bin = red_image(image,"bin")
+        return red_bin
+    
 def decide():
     battery = float(sense("battery_lev"))
     if battery < 0.1:
@@ -170,19 +182,31 @@ def decide():
     if found_object:
         print("feel object against bumper")
         return "feel object against bumper"
-    object_in_vision = find_object_vision(get_image_small_cam())
+    object_in_vision, colour = find_object_vision(get_image_small_cam())
     # print(get_image_small_cam()[:,:,0])
     if object_in_vision:
-        print("object in vision")
+        print("object in vision: ", colour)
+        return("object in vision: ", colour)
+    bin_in_vision_red = find_bin_vision(get_image_top_cam(),"red")
+    if bin_in_vision_red:
+        print("red bin in vision")
+    bin_in_vision_blue = find_bin_vision(get_image_top_cam(),"blue")
+    if bin_in_vision_blue:
+        print("blue bin detected")
+    
+    
     
 
 # MAIN CONTROL LOOP
 if clientID != -1:
     print('Connected')
-    while True:
+    i = 0
+    while (i<5):
+        print("___interation "+ str(i) + "____")
         # your code goes here
         drive_random()
         decide()
+        i+=1
         # print()
         # decide()
         # show_image(get_image_small_cam())
