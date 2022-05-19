@@ -103,35 +103,33 @@ def drive_random():
 
 def green_image(image):
     green = image[:,:,1]
-    return np.any((green > 235))
+    red = image[:,:,0]
+    blue = image[:,:,2]
+    return ((green > 148) & (red < 55) & (blue<20))
 
 def blue_image(image):
     blue = image[:,:,2]
-    return np.any((blue > 235))
+    red = image[:,:,0]
+    return (blue > 140)& (red < 10)
    
 def red_image(image,object):
-    if object == "bo    x":
-        print("looking for red box:")
+    if object == "box":
         red = image[:, :, 0]
         green = image[:,:,1] 
-        red_matches = (red < 115) & (red > 95)
-        green_matches = (green > 45) & (green < 55)  
-        return(np.any((red_matches & green_matches)))
+        red_matches = (red < 115) & (red > 90)
+        green_matches = (green > 35) & (green < 60)  
+        return((red_matches & green_matches))
     elif object == "bin":
-        print("looking for red bin:")
         red = image[:, :, 0]
         green = image[:,:,1]
         red_matches = (red > 120) 
         green_matches = (green < 10)  
-        return(np.any((red_matches & green_matches)))
+        return((red_matches & green_matches))
 
 def yellow_image(image):
-    return ((green_image(image) + red_image(image,"bin"))/2).astype(int)
-    
-def blue_image(image):
-    blue = image[:, :, 2]
-    blue = (blue > 235).astype(int)
-    return blue
+    green = image[:,:,1]
+    red = image[:,:,0]
+    return ((green>240) & (red>240))
 
 
 # END OF FUNCTIONS
@@ -148,18 +146,23 @@ def sense(request):
         return get_battery()
     
 def object_against_bumper(view):
-    if np.all(red_image(view,"box")) or np.all(green_image(view)):
+    
+    # print(np.count_nonzero((red_image(view,"box")).astype(int).flatten()) )
+    # print(np.count_nonzero((green_image(view)).astype(int).flatten()))
+    if np.count_nonzero((red_image(view,"box")).astype(int).flatten()) > (60*60):
+        print("red against bumper")
+        return True
+    elif np.count_nonzero((green_image(view)).astype(int).flatten()) > (60*60):
+        print("green against bumper")
         return True
     return False
 
 def find_object_vision(image):
     red_box = red_image(image,"box")
-    if red_box:
-        print("red box detected")
+    if np.any(red_box):
         return (True,"red")
     green_box = green_image(image)
-    if  green_box:
-        print("green box detected")
+    if  np.any(green_box):
         return (True,"green")
     return (False,"")
 
@@ -168,25 +171,32 @@ def find_bin_vision(image,colour):
         blue_bin = np.any(blue_image(image))
         return blue_bin
     elif colour == "red":
-        red_bin = red_image(image,"bin")
+        red_bin = np.any(red_image(image,"bin"))
         return red_bin
-    
+ 
+def find_charge_station(image):
+    station = np.any(yellow_image(image))
+    return station
+
 def decide():
     battery = float(sense("battery_lev"))
     if battery < 0.1:
         print("charge")
-        return "charge"
+        # return "charge"
     else: 
         print("battery OK")
+        found_station = find_charge_station(sense("top_view"))
+        if found_station:
+            print("station in vision")
     found_object = object_against_bumper(sense("close_view"))
     if found_object:
         print("feel object against bumper")
-        return "feel object against bumper"
-    object_in_vision, colour = find_object_vision(get_image_small_cam())
+        # return "feel object against bumper"
+    object_in_vision, colour = find_object_vision(sense("close_view"))
     # print(get_image_small_cam()[:,:,0])
     if object_in_vision:
         print("object in vision: ", colour)
-        return("object in vision: ", colour)
+        # return("object in vision: ", colour)
     bin_in_vision_red = find_bin_vision(get_image_top_cam(),"red")
     if bin_in_vision_red:
         print("red bin in vision")
@@ -201,7 +211,7 @@ def decide():
 if clientID != -1:
     print('Connected')
     i = 0
-    while (i<5):
+    while (i<40):
         print("___interation "+ str(i) + "____")
         # your code goes here
         drive_random()
