@@ -99,22 +99,21 @@ def show_image(image):
 
 def drive_random():
     # set speed of wheels randomly
-    l = random.random() * 30
-    r = random.random() * 20
-    set_speed(l,r)
+    n = 10
+    set_speed(30*n,20*n)
 
 def green_image(image):
     # determine which pixels in view are green
     green = image[:,:,1]
     red = image[:,:,0]
     blue = image[:,:,2]
-    return ((green > 148) & (red < 55) & (blue<20))
+    return ((green > 140) & (red < 75) & (blue<25))
 
 def blue_image(image):
     # determine which pixels in view are blue
     blue = image[:,:,2]
     red = image[:,:,0]
-    return (blue > 140)& (red < 10)
+    return (blue > 130) & (red < 10)
    
 def red_image(image,object):
     # determine which pixels in view are red, depending wether we detect red boxes or red bin
@@ -122,8 +121,8 @@ def red_image(image,object):
         #determine which pixels in view are of red box
         red = image[:, :, 0]
         green = image[:,:,1] 
-        red_matches = (red < 115) & (red > 90)
-        green_matches = (green > 35) & (green < 60)  
+        red_matches = (red < 140) & (red > 90)
+        green_matches = (green > 35) & (green < 75)  
         return((red_matches & green_matches))
     elif object == "bin":
         #determine which pixels in view are of red bin
@@ -144,7 +143,7 @@ def purple_image(image):
     green = image[:,:,1]
     red = image[:,:,0]
     blue = image[:,:,2]
-    return ((red > 120) & (red < 140) & (green > 120) & (green < 140) & (blue>140) & (blue<165))
+    return ((red > 100) & (red < 160) & (green > 100) & (green < 160) & (blue>100) & (blue<190))
     
 # END OF FUNCTIONS
 def sense(request):
@@ -158,104 +157,121 @@ def sense(request):
         return get_image_small_cam()
     elif request == "battery_lev":
         return get_battery()
+
+def go_from_wall(direction):
+    if direction == "to_left":
+        print(direction)
+        set_speed(-100,70)
+        time.sleep(1.5)
+    elif direction == "to_right":
+        print(direction)
+        set_speed(70,-100)
+        time.sleep(1.5)
+    elif direction == "backwards":
+        turn_around()
+    return
     
-def wall(image):
-    wall = purple_image(image)
-    if np.any(wall):
-        # determine direction to turn from wall
-        threshold = 1500
-        left_side = np.sum(wall[:,:int(wall.shape[0]/2)]) 
-        right_side =np.sum(wall[:,int(wall.shape[0]/2):])
-        if (left_side >1500) or (right_side > 1500):
-            if (left_side > right_side):
-                return True,"to right"
-            else:
-                return True, "to_left"
-        else:
-            return False, "_"
-    else:
-        return False, "_"
+def wall(wall_image):
+    # determine direction to turn from wall
+    threshold = 1000
+    left_side = np.sum(wall_image[:,:int(wall_image.shape[0]/2)]) 
+    right_side = np.sum(wall_image[:,int(wall_image.shape[0]/2):])
+    if (left_side >threshold) or (right_side > threshold):
+        if (left_side > right_side):
+            return True,"to right"
+        elif(right_side > left_side):
+            return True, "to_left"
+        elif(right_side == left_side):
+            return True, "backwards"
+    return False, "_"
      
-def towards_objective(image):
+def towards_objective(image,close=False):
     # determine direction to follow towards box
     left_side = np.sum(image[:,:int(image.shape[0]/2)])  
-    right_side = np.sum(image[:,int(image.shape[0]/2):])     
-    if left_side > right_side:
-        n = 1
-        proportion = (left_side -right_side)/(left_side + right_side)*n
-        set_speed(1,1*proportion)
-        time.sleep(0.5)
-        set_speed(0.1,0.1)
-        return
+    right_side = np.sum(image[:,int(image.shape[0]/2):])  
+    n = 10
+    if close:
+        i = 0.05
     else:
-        n = 1
-        proportion = (right_side - left_side)/(left_side + right_side)*n
-        set_speed(1*proportion,1)
-        time.sleep(0.5)
-        set_speed(0.1,0.1)
+        i = 1
+    proportion = (np.abs((left_side -right_side))/(left_side + right_side))*n   
+    if proportion < 5:
+        set_speed(400*i,400*i)
         return
-        
-    
-def find_bin(image,colour):
+    if left_side > right_side:
+        set_speed(100*i,(100+2*proportion)*i)
+    else:
+        set_speed((100+2*proportion)*i,(100)*i)
+    return
+           
+def bin_image(image,colour):
     if colour == "blue":
         bin_image = blue_image(image)
-        blue_bin = np.any(bin_image)
-        return blue_bin,bin_image
     elif colour == "red":
         bin_image = red_image(image,"bin")
-        red_bin = np.any(bin_image)
-        return red_bin,bin_image
+    proximity = np.count_nonzero(bin_image)
+    bin_detected = np.any(bin_image)    
+    return bin_detected,bin_image,proximity
+
+def find_station():
+    image = sense("top_view")
+    yellow_view = yellow_image(image)
+    station = np.any(yellow_view)
+    return station
+
+def find_box():
+    image = sense("close_view")
+    red_box = red_image(image,"box")
+    if np.any(red_box):
+        return (True,"red",red_box)
+    green_box = green_image(image)
+    if  np.any(green_box):
+        return (True,"green",green_box)
+    return (False,"_ ","_")
+
+def detect_box_posession():
+    image = sense("close_view")
+    if np.count_nonzero((red_image(image,"box")).astype(int).flatten()) > (60*60):
+        return (True, "red")
+    elif np.count_nonzero((green_image(image)).astype(int).flatten()) > (60*60):
+        return (True, "green")
+    return (False, "_")
+    
+def find_bin(objective):
+    colour = objective.split(" bin")[0]
+    if colour == "red":
+        bin_detected,image,proximity = bin_image(get_image_top_cam(),"red")
+    elif colour == "blue":
+        bin_detected,image,proximity = bin_image(get_image_top_cam(),"blue")
+    if proximity > (40*40):
+        close = True
+    else:
+        close = False
+    return bin_detected, image,close
 
 def find_objective(objective):
     if objective == "station":
-        image = sense("top_view")
-        yellow_view = yellow_image(image)
-        station = np.any(yellow_view)
-        return station
+        return find_station()
     elif objective == "box_view":
-        image = sense("close_view")
-        red_box = red_image(image,"box")
-        if np.any(red_box):
-            return (True,"red",red_box)
-        green_box = green_image(image)
-        if  np.any(green_box):
-            return (True,"green",green_box)
-        return (False,"")
+        return find_box()
     elif objective == "box_posession":
-        image = sense("close_view")
-        if np.count_nonzero((red_image(image,"box")).astype(int).flatten()) > (60*60):
-            print("red against bumper")
-            return True, "red"
-        elif np.count_nonzero((green_image(image)).astype(int).flatten()) > (60*60):
-            print("green against bumper")
-            return True, "green"
-        return False, "_"
-    elif objective == "red bin":
-        image = get_image_top_cam()
-        found,bin_image = find_bin(image,"red")
-        return found,"bin_image",bin_image
-    elif objective == "blue bin":
-        image = get_image_top_cam()
-        found,bin_image = find_bin(image,"blue")
-        return found,"bin_image",bin_image
+        return detect_box_posession()
+    elif "bin" in objective:
+        return find_bin(objective)
         
           
 def decide():
-    close_to_wall, direction = wall(sense("top_view"))
-    if close_to_wall:
-        print("close to wall")
-        if direction == "to_left":
-            print(direction)
-            set_speed(-2,7)
-            time.sleep(1.5)
-            set_speed(1,1)
-            return
-        else:
-            print(direction)
-            set_speed(7,-2)
-            time.sleep(1.5)
-            set_speed(1,1)  
-            return  
+    ### add: OR CLOSE TO BIN ##
+    close_to_wall__top_cam, direction_topcam = wall( purple_image(sense("top_view")))
+    close_to_wall__small_cam,direction_small_cam = wall( purple_image(sense("close_view")))
+    if close_to_wall__top_cam :
+        print("close to wall, go: "+direction_topcam)
+        go_from_wall(direction_topcam)
+        return
+    elif close_to_wall__small_cam:
+        print("close to wall go: " +direction_small_cam)
+        go_from_wall(direction_small_cam)
+        return
     low_battery = float(sense("battery_lev")) < 0.1
     if low_battery:
         print("battery low")
@@ -269,7 +285,7 @@ def decide():
             # find station
             print("searching station")
             drive_random()
-            time.sleep(0.5)
+            time.sleep(1)
             return
     print("battery OK")
     box, box_colour = find_objective("box_posession")
@@ -278,45 +294,59 @@ def decide():
         print("no box in posession")
         box_in_vision, colour,box_image = find_objective("box_view")
         if box_in_vision:
-            print("box in vision: ", box_colour, " , approaching it")
+            print("box in vision: ", colour, " , approaching it")
             towards_objective(box_image)
+            #if we have box in posession, continue driving for one second to ensure we grab it
+            box, box_colour = find_objective("box_posession")
+            if box:
+                print("box in possession after finding")
+                time.sleep(0.5)
+            return
         else:
             print("searching box")
             # go search for a box by driving randomly
             drive_random()
-            time.sleep(0.5)
             return
     print("box in posession")
-    if box_colour == "red": 
-        bin_in_vision, bin_image = find_objective("red bin")
-        if bin_in_vision:
-            print("red bin in vision")
-            print("approaching bin")
+    bin = str(["red","blue"][box_colour == "green"])
+    objective = str(bin + " bin" )
+    bin_in_vision, bin_image,close = find_objective(objective)
+    if bin_in_vision:
+        print(bin + " bin in vision")
+        if close:
+            print("close")
+            towards_objective(bin_image,True)
+            time.sleep(0.5)
+            box, _ = find_objective("box_posession")
+            if not box:
+                print("dropped box :D")
+                turn_around()
+        else:
             towards_objective(bin_image)
-    elif box_colour == "green":
-        bin_in_vision, bin_image = find_objective("blue bin")
-        if bin_in_vision:
-            print("blue bin detected")
-            print("approaching bin")
-            towards_objective(bin_image)
-    
-    
+        time.sleep(0.5)
+        # check wether we dropped the box
+        return
+    else:
+        print("searching "+ bin+ " bin")
+        drive_random()
+        time.sleep(1)
+        return         
+ 
+def turn_around():
+    set_speed(-100,-100)
+    time.sleep(5)
+    set_speed(1,1)
+    print("turning around")
+    return
     
 
 # MAIN CONTROL LOOP
 if clientID != -1:
     print('Connected')
     i = 0
-    while (i<40):
+    while (True):
         print("___interation "+ str(i) + "____")
-        # your code goes here
-        # drive_random()
         decide()
-        i+=1
-        # print()
-        # decide()
-        # show_image(get_image_small_cam())
-        # show_image(get_image_top_cam())
     # End connection
     sim.simxGetPingTime(clientID)
     sim.simxFinish(clientID)
