@@ -1,4 +1,5 @@
 import colorsys
+from turtle import right
 
 from click import pass_obj
 from regex import R
@@ -175,15 +176,16 @@ def go_from_wall(direction):
     
 def wall(wall_image):
     # determine direction to turn from wall
-    threshold = 1000
+    threshold = [1000,250][wall_image.shape[0]<64]
     left_side = np.sum(wall_image[:,:int(wall_image.shape[0]/2)]) 
     right_side = np.sum(wall_image[:,int(wall_image.shape[0]/2):])
     if (left_side >threshold) or (right_side > threshold):
-        if (left_side > right_side):
+        print((left_side/right_side))
+        if (left_side/right_side) > 2:
             return True,"to right"
-        elif(right_side > left_side):
+        elif(right_side/left_side)>2:
             return True, "to_left"
-        elif(right_side == left_side):
+        else:
             return True, "backwards"
     return False, "_"
 
@@ -229,7 +231,8 @@ def find_station():
     return (station,yellow_view)
 
 def at_station(image):
-    return (np.all(image[40:,:]))
+    threshold = int(40/(64/image.shape[0]))
+    return (np.all(image[threshold:,:]))
         
 
 def find_box():
@@ -245,19 +248,21 @@ def find_box():
 
 def detect_box_posession():
     image = sense("close_view")
-    if np.count_nonzero((red_image(image,"box")).astype(int).flatten()) > (60*60):
+    threshold = 60 / (64/image.shape[0])
+    if np.count_nonzero((red_image(image,"box")).astype(int).flatten()) > (threshold**2):
         return (True, "red")
-    elif np.count_nonzero((green_image(image)).astype(int).flatten()) > (60*60):
+    elif np.count_nonzero((green_image(image)).astype(int).flatten()) > (threshold**2):
         return (True, "green")
     return (False, "_")
     
-def find_bin(objective,threshold = (40*40)):
+def find_bin(objective):
     colour = objective.split(" bin")[0]
     if colour == "red":
         bin_detected,image,proximity = bin_image(get_image_top_cam(),"red")
     elif colour == "blue":
         bin_detected,image,proximity = bin_image(get_image_top_cam(),"blue")
-    if proximity > threshold:
+    threshold = 40/(64/image.shape[0])
+    if proximity > (threshold**2):
         close = True
     else:
         close = False
@@ -293,7 +298,8 @@ def evation_layer():
     return False
          
 def battery_layer():
-    low_battery = float(sense("battery_lev")) < 0.1
+    threshold = [0.1,0.3][sense("close_view").shape[0] < 64]
+    low_battery = float(sense("battery_lev")) < threshold
     if low_battery:
         print("battery low")
         found_station,station_image = find_objective("station")
@@ -373,10 +379,10 @@ def decide():
     return
  
 def turn_around():
-    set_speed(-100,-100)
-    time.sleep(5)
-    set_speed(1,1)
     print("turning around")
+    set_speed(-100,-150)
+    time.sleep(3)
+    set_speed(1,1)
     return
     
 
