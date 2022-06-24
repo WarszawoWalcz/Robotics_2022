@@ -126,7 +126,7 @@ def wall(wall_image):
     return False, "_"
 
 def detect_wall():
-    """detect whether we are close to a wall. checks oth top cam and small cam
+    """detect whether we are close to a wall. checks both top cam and small cam
 
     Returns:
         (Boolean,wall image): Boolean representing whether we are close to a wall, image representing location of the wall.
