@@ -84,10 +84,8 @@ def E(error):
     Kd = 0.015
     if len(error) <2:
         PID_error = Kp * error[-1] + Ki * np.trapz(error) + Kd * 0
-        print("absolute: ", error[-1], " integral: ", np.trapz(error))
     else:
         PID_error = Kp * error[-1] + Ki * np.trapz(error) + Kd * np.gradient(error[-2:])[-1]
-        print("absolute: ", error[-1], " integral: ", np.trapz(error), " gradient: ", np.gradient(error[-2:])[-1])
 
     return PID_error
 
@@ -135,7 +133,6 @@ def decide(state):
     ((sense_red, sense_blue, sense_black), (red, blue, black)) = state
     if sense_blue:
         print("blue")
-        print(blue)
         if atDisk(blue):
             action = "stay"
             error = (0,0)
@@ -144,12 +141,9 @@ def decide(state):
     elif sense_black:
         print("black")
         action, error = detect_line_direction(black)
-        if action != "straight":
-            print(black)
 
     elif sense_red:
         print("red")
-        # print(red)
         action = "straight"
         error = (0,0)
         if not atDisk(red):
@@ -168,11 +162,9 @@ def act(action,error):
     if action == "stay":
         set_speed(0,0)
     elif action == "turn left":
-        print("turning left. error left: ", errors_left[-1])
         PID_error = E(errors_left)
         turn("l", PID_error)
     elif action == "turn right":
-        print("turning right. error right: ", errors_right[-1])
         PID_error = E(errors_right)
         turn("r", PID_error)
     elif action == "straight":

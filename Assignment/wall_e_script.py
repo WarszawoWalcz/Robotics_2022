@@ -342,7 +342,7 @@ def find_bin(objective):
         bin_detected,image,proximity = bin_image(get_image_top_cam(),"red")
     elif colour == "blue":
         bin_detected,image,proximity = bin_image(get_image_top_cam(),"blue")
-    threshold = 40/(64/image.shape[0])
+    threshold = 35/(64/image.shape[0])
     if proximity > (threshold**2):
         close = True
     else:
@@ -372,7 +372,9 @@ def find_objective(objective):
 def drive_random():
     """  set speed of wheels randomly. adopt driving beaviour to scenery.
     """
-    r_speed,l_speed = [(20,10),(12,8)][sense("close_view").shape[0] < 64]    
+    r1 = random.randrange(1,4)
+    r2 = random.randrange(3)
+    r_speed,l_speed = [(20,10),(6*r1,3*r2)][sense("close_view").shape[0] < 64]    
     n = 5
     set_speed(r_speed*n,l_speed*n)
     
@@ -382,7 +384,7 @@ def turn_around():
     """    
     print("turning around")
     set_speed(-100,-150)
-    sleep_time = [3,0.5][sense("close_view").shape[0] < 64]
+    sleep_time = [2,0.5][sense("close_view").shape[0] < 64]
     time.sleep(sleep_time)
     set_speed(1,1)
     return
@@ -422,14 +424,14 @@ def towards_objective(image,close=False):
     """    
     left_side = np.sum(image[:,:int(image.shape[0]/2)])  
     right_side = np.sum(image[:,int(image.shape[0]/2):])  
-    n = 15
+    n = 5
     if close:
         i = 0.05
     else:
         i = [1,0.5][sense("close_view").shape[0] < 64]
     proportion = (np.abs((left_side -right_side))/(left_side + right_side))*n   
     if proportion < 5:
-        set_speed(400*i,400*i)
+        set_speed(350*i,350*i)
         return
     if left_side > right_side:
         set_speed(100*i,(100+2*proportion)*i)
@@ -448,7 +450,6 @@ def evation_layer():
     """
     close_to_wall,direction = detect_wall()
     if close_to_wall:
-        print("close to wall, going to: ", direction)
         go_from_wall(direction)
         return True
     box, _ = find_objective("box_posession")
@@ -458,7 +459,6 @@ def evation_layer():
     _,_,close_to_blue_bin = find_bin("blue")
     _,_,close_to_red_bin = find_bin("red")
     if close_to_blue_bin or close_to_red_bin:
-        print("too close to bin")
         turn_around()
         return  True     
     return False
@@ -487,11 +487,9 @@ def battery_layer():
             return True
         else:
             # find station
-            print("searching station")
             drive_random()
             time.sleep(1)
             return True
-    print("battery OK")
     return False
 
 def box_posession_layer():
@@ -512,15 +510,13 @@ def box_posession_layer():
             #if we have box in posession, continue driving for 0.2 second to ensure we grab it
             box, box_colour = find_objective("box_posession")
             if box:
-                print("box in possession after finding")
-                time.sleep(0.2)
+                time.sleep(0.1)
             return True,None
         else:
             print("searching box")
             # go search for a box by driving randomly
             drive_random()
             return True,None
-    print("box in posession")
     return False,box_colour
            
 def bin_layer(box_colour):
@@ -541,13 +537,11 @@ def bin_layer(box_colour):
             time.sleep(0.3)
             box, _ = find_objective("box_posession")
             if not box:
-                print("dropped box :D")
                 turn_around()
         else:
             towards_objective(bin_image)
         time.sleep(0.5)
     else:
-        print("searching "+ bin+ " bin")
         drive_random()
         time.sleep(1)
     return         
@@ -570,9 +564,7 @@ def decide():
 # MAIN CONTROL LOOP
 if clientID != -1:
     print('Connected')
-    i = 0
     while (True):
-        print("___interation "+ str(i) + "____")
         decide()
     # End connection
     sim.simxGetPingTime(clientID)
